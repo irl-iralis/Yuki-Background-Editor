@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuki Photo Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+            border-radius: 2px;
+        }
+
+        /* Checkered background */
+        .checkered-bg {
+            background-image: 
+                linear-gradient(45deg, #1f2937 25%, transparent 25%, transparent 75%, #1f2937 75%, #1f2937), 
+                linear-gradient(45deg, #1f2937 25%, transparent 25%, transparent 75%, #1f2937 75%, #1f2937);
+            background-size: 16px 16px;
+            background-position: 0 0, 8px 8px;
+            background-color: #111827;
+        }
+
+        /* Range input styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #60a5fa;
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 0 2px #1f2937;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #374151;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen w-full flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar / Controls: Di atas untuk Mobile, di Samping untuk Desktop -->
+    <aside class="w-full md:w-80 bg-gray-800 border-b md:border-b-0 md:border-r border-gray-700 flex flex-col max-h-[35vh] md:max-h-full md:h-full z-10 shadow-xl overflow-y-auto shrink-0">
+        <div class="p-3 md:p-6 pb-2 border-b border-gray-700 flex items-center justify-between gap-3 sticky top-0 bg-gray-800/95 backdrop-blur z-20">
+            <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <i class="ph ph-aperture text-lg md:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm md:text-xl font-bold tracking-tight">Photo Editor</h1>
+                    <p class="text-[10px] text-gray-400">by Yuki</p>
+                </div>
+            </div>
+            <span class="text-[10px] text-blue-400 font-medium md:hidden bg-blue-500/10 px-2 py-1 rounded">Geser ke bawah ▾</span>
+        </div>
+
+        <div class="p-3 md:p-6 flex-1 flex flex-col gap-4" id="controls-container" style="opacity: 0.5; pointer-events: none;">
+            
+            <!-- Smart Tools -->
+            <div class="space-y-1.5">
+                <h2 class="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Smart Tools</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-crop" class="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 text-gray-200 text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <i class="ph ph-crop text-base"></i> Crop
+                    </button>
+                    <button id="btn-remove-bg" class="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-gray-100 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20">
+                        <i class="ph ph-magic-wand text-base"></i> Auto BG
+                    </button>
+                </div>
+            </div>
+
+            <!-- Background Colors -->
+            <div class="space-y-1.5">
+                <h2 class="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Background Color</h2>
+                <div class="grid grid-cols-4 gap-2">
+                    <button class="bg-btn p-1.5 rounded-lg border-2 border-blue-500 bg-gray-700/50 hover:bg-gray-600 flex justify-center items-center checkered-bg relative overflow-hidden transition-all h-9" data-color="transparent" title="Transparent"></button>
+                    <button class="bg-btn p-1.5 rounded-lg border-2 border-transparent hover:border-gray-400 bg-white transition-all shadow-inner h-9" data-color="#ffffff" title="White"></button>
+                    <button class="bg-btn p-1.5 rounded-lg border-2 border-transparent hover:border-gray-400 bg-[#0b5394] transition-all shadow-inner h-9" data-color="#0b5394" title="Blue"></button>
+                    <button class="bg-btn p-1.5 rounded-lg border-2 border-transparent hover:border-gray-400 bg-[#cc0000] transition-all shadow-inner h-9" data-color="#cc0000" title="Red"></button>
+                </div>
+            </div>
+
+            <div class="w-full h-px bg-gray-700"></div>
+
+            <!-- Adjustments -->
+            <div class="space-y-2.5">
+                <h2 class="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Adjustments</h2>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="brightness" class="text-gray-300">Brightness</label>
+                        <span id="brightness-val" class="text-gray-400">100%</span>
+                    </div>
+                    <input type="range" id="brightness" min="0" max="200" value="100" class="filter-slider">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="contrast" class="text-gray-300">Contrast</label>
+                        <span id="contrast-val" class="text-gray-400">100%</span>
+                    </div>
+                    <input type="range" id="contrast" min="0" max="200" value="100" class="filter-slider">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="saturation" class="text-gray-300">Saturation</label>
+                        <span id="saturation-val" class="text-gray-400">100%</span>
+                    </div>
+                    <input type="range" id="saturation" min="0" max="200" value="100" class="filter-slider">
+                </div>
+            </div>
+
+            <div class="w-full h-px bg-gray-700"></div>
+
+            <!-- Effects -->
+            <div class="space-y-2.5">
+                <h2 class="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Effects</h2>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="grayscale" class="text-gray-300">Grayscale</label>
+                        <span id="grayscale-val" class="text-gray-400">0%</span>
+                    </div>
+                    <input type="range" id="grayscale" min="0" max="100" value="0" class="filter-slider">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="sepia" class="text-gray-300">Sepia</label>
+                        <span id="sepia-val" class="text-gray-400">0%</span>
+                    </div>
+                    <input type="range" id="sepia" min="0" max="100" value="0" class="filter-slider">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="blur" class="text-gray-300">Blur</label>
+                        <span id="blur-val" class="text-gray-400">0px</span>
+                    </div>
+                    <input type="range" id="blur" min="0" max="20" value="0" class="filter-slider">
+                </div>
+            </div>
+            
+            <div class="w-full h-px bg-gray-700"></div>
+
+            <!-- Transform -->
+            <div class="space-y-1.5 pb-2">
+                <h2 class="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Transform</h2>
+                <div class="grid grid-cols-4 gap-2">
+                    <button class="transform-btn p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 text-gray-200 transition-colors flex justify-center items-center h-9" id="rotate-left" title="Rotate Left">
+                        <i class="ph ph-arrow-u-up-left text-base"></i>
+                    </button>
+                    <button class="transform-btn p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 text-gray-200 transition-colors flex justify-center items-center h-9" id="rotate-right" title="Rotate Right">
+                        <i class="ph ph-arrow-u-up-right text-base"></i>
+                    </button>
+                    <button class="transform-btn p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 text-gray-200 transition-colors flex justify-center items-center h-9" id="flip-horizontal" title="Flip Horizontal">
+                        <i class="ph ph-arrows-left-right text-base"></i>
+                    </button>
+                    <button class="transform-btn p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 text-gray-200 transition-colors flex justify-center items-center h-9" id="flip-vertical" title="Flip Vertical">
+                        <i class="ph ph-arrows-down-up text-base"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col relative h-[65vh] md:h-full overflow-hidden">
+        <!-- Top Toolbar -->
+        <header class="h-13 px-4 bg-gray-900 border-b border-gray-800 flex items-center justify-between z-10 shrink-0">
+            <div class="flex items-center gap-2">
+                <input type="file" id="file-input" accept="image/jpeg, image/png, image/webp" class="hidden">
+                <button id="upload-btn" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-all shadow-md shadow-blue-500/20 active:scale-95">
+                    <i class="ph ph-upload-simple text-sm"></i>
+                    Upload Image
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="reset-btn" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition-all active:scale-95 border border-gray-700">
+                    <i class="ph ph-arrow-counter-clockwise text-sm"></i>
+                    Reset
+                </button>
+                <button id="download-btn" disabled class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all shadow-md shadow-emerald-500/20 active:scale-95">
+                    <i class="ph ph-download-simple text-sm"></i>
+                    Download
+                </button>
+            </div>
+        </header>
+
+        <!-- Canvas Container -->
+        <div class="flex-1 checkered-bg relative overflow-hidden flex items-center justify-center p-3">
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none">
+                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-600 shadow-xl text-gray-500">
+                    <i class="ph ph-image text-2xl"></i>
+                </div>
+                <h3 class="text-base font-bold text-gray-300 mb-1">No Image Selected</h3>
+                <p class="text-xs text-gray-500 max-w-xs">Upload an image from your device to start editing.</p>
+            </div>
+
+            <canvas id="image-canvas" class="max-w-full max-h-full object-contain rounded shadow-2xl z-10" style="display: none;"></canvas>
+            
+            <!-- Crop Container (Fixed overlay agar selalu tampil sempurna di atas layar HP) -->
+            <div id="crop-container" class="fixed inset-0 z-50 bg-gray-900/95 hidden flex-col">
+                <div class="flex-1 p-3 flex items-center justify-center overflow-hidden">
+                    <img id="crop-image" class="max-w-full max-h-full block">
+                </div>
+                <div class="h-14 border-t border-gray-700 flex items-center justify-center gap-3 bg-gray-900 shrink-0 px-4">
+                    <button id="cancel-crop" class="flex-1 max-w-[130px] py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-medium">Cancel</button>
+                    <button id="apply-crop" class="flex-1 max-w-[130px] py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium shadow-md shadow-blue-500/20">Apply Crop</button>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="absolute inset-0 z-40 bg-gray-900/80 backdrop-blur-sm hidden flex-col items-center justify-center p-6 text-center">
+                <i class="ph ph-spinner-gap text-3xl text-blue-500 animate-spin mb-3"></i>
+                <p id="loading-text" class="text-white font-medium text-xs max-w-xs">Processing...</p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        const canvas = document.getElementById('image-canvas');
+        const ctx = canvas.getContext('2d');
+        const emptyState = document.getElementById('empty-state');
+        const controlsContainer = document.getElementById('controls-container');
+
+        const filterSliders = document.querySelectorAll('.filter-slider');
+        const brightnessInput = document.getElementById('brightness');
+        const contrastInput = document.getElementById('contrast');
+        const saturationInput = document.getElementById('saturation');
+        const grayscaleInput = document.getElementById('grayscale');
+        const sepiaInput = document.getElementById('sepia');
+        const blurInput = document.getElementById('blur');
+
+        const rotateLeftBtn = document.getElementById('rotate-left');
+        const rotateRightBtn = document.getElementById('rotate-right');
+        const flipHorizontalBtn = document.getElementById('flip-horizontal');
+        const flipVerticalBtn = document.getElementById('flip-vertical');
+
+        const btnCrop = document.getElementById('btn-crop');
+        const btnRemoveBg = document.getElementById('btn-remove-bg');
+        const bgBtns = document.querySelectorAll('.bg-btn');
+        const cropContainer = document.getElementById('crop-container');
+        const cropImage = document.getElementById('crop-image');
+        const cancelCropBtn = document.getElementById('cancel-crop');
+        const applyCropBtn = document.getElementById('apply-crop');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+
+        let cropper = null;
+        let aiModel = null;
+        let aiProcessor = null;
+
+        let image = new Image();
+        let fileName = 'edited-image.png';
+
+        const defaultState = {
+            brightness: 100, contrast: 100, saturation: 100,
+            grayscale: 0, sepia: 0, blur: 0,
+            rotate: 0, flipHorizontal: 1, flipVertical: 1,
+            bgColor: 'transparent'
+        };
+
+        let currentState = { ...defaultState };
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileName = file.name.replace(/\.[^/.]+$/, "") + "-edited.png";
+            image.src = URL.createObjectURL(file);
+            image.onload = () => {
+                emptyState.style.display = 'none';
+                canvas.style.display = 'block';
+                controlsContainer.style.opacity = '1';
+                controlsContainer.style.pointerEvents = 'auto';
+                downloadBtn.disabled = false;
+                resetState();
+                renderImage();
+            }
+        });
+
+        filterSliders.forEach(slider => slider.addEventListener('input', updateFilterState));
+
+        rotateLeftBtn.addEventListener('click', () => { currentState.rotate = (currentState.rotate - 90) % 360; renderImage(); });
+        rotateRightBtn.addEventListener('click', () => { currentState.rotate = (currentState.rotate + 90) % 360; renderImage(); });
+        flipHorizontalBtn.addEventListener('click', () => { currentState.flipHorizontal = currentState.flipHorizontal === 1 ? -1 : 1; renderImage(); });
+        flipVerticalBtn.addEventListener('click', () => { currentState.flipVertical = currentState.flipVertical === 1 ? -1 : 1; renderImage(); });
+
+        resetBtn.addEventListener('click', resetState);
+
+        bgBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                bgBtns.forEach(b => { b.classList.remove('border-blue-500'); b.classList.add('border-transparent'); });
+                const target = e.currentTarget;
+                target.classList.remove('border-transparent');
+                target.classList.add('border-blue-500');
+                currentState.bgColor = target.dataset.color;
+                renderImage();
+            });
+        });
+
+        btnCrop.addEventListener('click', () => {
+            if (!image.src) return;
+            cropImage.src = image.src;
+            cropContainer.classList.remove('hidden');
+            cropContainer.classList.add('flex');
+            
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(cropImage, {
+                viewMode: 1, dragMode: 'crop', autoCropArea: 0.8,
+                restore: false, guides: true, center: true, highlight: false,
+                cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false,
+            });
+        });
+
+        cancelCropBtn.addEventListener('click', () => {
+            cropContainer.classList.add('hidden');
+            cropContainer.classList.remove('flex');
+            if (cropper) cropper.destroy();
+        });
+
+        applyCropBtn.addEventListener('click', () => {
+            if (!cropper) return;
+            const croppedCanvas = cropper.getCroppedCanvas();
+            if (croppedCanvas) image.src = croppedCanvas.toDataURL('image/png');
+            cropContainer.classList.add('hidden');
+            cropContainer.classList.remove('flex');
+            cropper.destroy();
+            renderImage();
+        });
+
+        btnRemoveBg.addEventListener('click', async () => {
+            if (!image.src) return;
+            
+            loadingText.innerText = "Mempersiapkan AI...";
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
+            try {
+                // Import langsung Transformers.js secara lokal tanpa worker terpisah
+                const tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
+                const { AutoModel, AutoProcessor, env, RawImage } = tf;
+                
+                env.allowLocalModels = false;
+                env.useBrowserCache = true;
+
+                const MODEL_ID = 'briaai/RMBG-1.4';
+                
+                if (!aiModel || !aiProcessor) {
+                    loadingText.innerText = "Mengunduh model AI... (pertama kali agak lama)";
+                    aiModel = await AutoModel.from_pretrained(MODEL_ID, {
+                        config: { model_type: 'custom' },
+                        device: 'wasm', dtype: 'q8',
+                    });
+
+                    aiProcessor = await AutoProcessor.from_pretrained(MODEL_ID, {
+                        config: {
+                            do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
+                            image_mean: [0.5, 0.5, 0.5], feature_extractor_type: 'ImageFeatureExtractor',
+                            image_std: [1, 1, 1], resample: 2, rescale_factor: 0.00392156862745098,
+                            size: { width: 1024, height: 1024 },
+                        },
+                    });
+                }
+
+                loadingText.innerText = "Menganalisis gambar...";
+                
+                // Perkecil gambar sementara agar RAM HP aman
+                const maxDim = 800;
+                let aiWidth = image.width, aiHeight = image.height;
+                if (aiWidth > maxDim || aiHeight > maxDim) {
+                    const ratio = Math.min(maxDim / aiWidth, maxDim / aiHeight);
+                    aiWidth = Math.round(aiWidth * ratio);
+                    aiHeight = Math.round(aiHeight * ratio);
+                }
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = aiWidth; tempCanvas.height = aiHeight;
+                tempCanvas.getContext('2d').drawImage(image, 0, 0, aiWidth, aiHeight);
+                
+                const aiBlob = await new Promise(r => tempCanvas.toBlob(r, 'image/jpeg', 0.85));
+                const rawImg = await RawImage.fromBlob(aiBlob);
+                
+                const { pixel_values } = await aiProcessor(rawImg);
+                const { output } = await aiModel({ input: pixel_values });
+                const maskTensor = output[0].mul(255).to('uint8');
+
+                const mask = await RawImage.fromTensor(maskTensor).resize(image.width, image.height);
+                const data = new Uint8ClampedArray(mask.data);
+
+                loadingText.innerText = "Menyelesaikan hasil...";
+                
+                const maskCanvas = document.createElement('canvas');
+                maskCanvas.width = image.width; maskCanvas.height = image.height;
+                const mctx = maskCanvas.getContext('2d');
+                const mImg = mctx.createImageData(image.width, image.height);
+                for (let i = 0; i < data.length; i++) mImg.data[i * 4 + 3] = data[i];
+                mctx.putImageData(mImg, 0, 0);
+
+                const canvasComposite = document.createElement('canvas');
+                canvasComposite.width = image.width; canvasComposite.height = image.height;
+                const ctxComp = canvasComposite.getContext('2d');
+                ctxComp.drawImage(image, 0, 0, image.width, image.height);
+                ctxComp.globalCompositeOperation = 'destination-in';
+                ctxComp.drawImage(maskCanvas, 0, 0, image.width, image.height);
+
+                const finalBlob = await new Promise(r => canvasComposite.toBlob(r, 'image/png'));
+                image.src = URL.createObjectURL(finalBlob);
+                
+                if (currentState.bgColor !== 'transparent') {
+                    document.querySelector('[data-color="transparent"]').click();
+                } else {
+                    renderImage();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Gagal memproses AI. Pastikan perangkat memiliki koneksi internet yang stabil untuk mengunduh model pada percobaan pertama.");
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if(!image.src) return;
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+        });
+
+        function updateFilterState(e) {
+            const type = e.target.id;
+            const value = e.target.value;
+            currentState[type] = value;
+            document.getElementById(`${type}-val`).innerText = type === 'blur' ? `${value}px` : `${value}%`;
+            renderImage();
+        }
+
+        function resetState() {
+            currentState = { ...defaultState };
+            brightnessInput.value = defaultState.brightness;
+            contrastInput.value = defaultState.contrast;
+            saturationInput.value = defaultState.saturation;
+            grayscaleInput.value = defaultState.grayscale;
+            sepiaInput.value = defaultState.sepia;
+            blurInput.value = defaultState.blur;
+
+            document.getElementById('brightness-val').innerText = '100%';
+            document.getElementById('contrast-val').innerText = '100%';
+            document.getElementById('saturation-val').innerText = '100%';
+            document.getElementById('grayscale-val').innerText = '0%';
+            document.getElementById('sepia-val').innerText = '0%';
+            document.getElementById('blur-val').innerText = '0px';
+
+            bgBtns.forEach(b => {
+                b.classList.remove('border-blue-500');
+                if (b.dataset.color === 'transparent') b.classList.add('border-blue-500');
+                else b.classList.add('border-transparent');
+            });
+
+            if(image.src) renderImage();
+        }
+
+        function renderImage() {
+            if (!image.src) return;
+            if (currentState.rotate === 90 || currentState.rotate === 270 || currentState.rotate === -90 || currentState.rotate === -270) {
+                canvas.width = image.height; canvas.height = image.width;
+            } else {
+                canvas.width = image.width; canvas.height = image.height;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (currentState.bgColor !== 'transparent') {
+                ctx.fillStyle = currentState.bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            ctx.filter = `
+                brightness(${currentState.brightness}%) 
+                contrast(${currentState.contrast}%) 
+                saturate(${currentState.saturation}%) 
+                grayscale(${currentState.grayscale}%) 
+                sepia(${currentState.sepia}%) 
+                blur(${currentState.blur}px)
+            `;
+
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            if (currentState.rotate !== 0) ctx.rotate(currentState.rotate * Math.PI / 180);
+            ctx.scale(currentState.flipHorizontal, currentState.flipVertical);
+            ctx.drawImage(image, -image.width / 2, -image.height / 2, image.width, image.height);
+        }
+    </script>
+</body>
+</html>
